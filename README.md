@@ -21,7 +21,7 @@ If the source region is outage,
 - Launch the connector on the DR cluster with the same connect configuration. Also the same internal connect topics are used. 
 
 #### How to run the script: 
-1. cd <DemoHome>/CL-uni-dir/scripts
+1. cd {DemoHome}/CL-uni-dir/scripts
 2. ./start.sh
 3. When "Read from ksql-west cluster, topic stockapp-users-count", let the script run for a while.
 4. Open a new window, run command: scripts/5-run-ksql-east.sh.
@@ -51,7 +51,7 @@ If the source region is outage,
 
 
 #### How to run the script:
-1. cd <DemoHome>/CL-bi-dir/scripts
+1. cd {DemoHome}/CL-bi-dir/scripts
 2. ./start.sh
 3. At "Read from ksql-west cluster, topic stockapp-users-count", let the script run for a while.
 4. Open a new window, run command: scripts/5-run-ksql-east.sh.
@@ -76,7 +76,7 @@ The count for each user are aggregated from the left over on the window of the e
 - network latency up to 50ms. Needs tuning if network latency  > 50ms and < 100ms.
 
 #### How to run the script:
-1. cd <DemoHome>/MRC/scripts:
+1. cd {DemoHome}/MRC/scripts:
 2. ./start.sh
 3. During step 4, "Read from ksql-west cluster, topic stockapp-users-count", let the script run for a while, then Ctrl C.
 4. The script will continue to the next step. 

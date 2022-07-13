@@ -24,12 +24,15 @@ If the source region is outage,
 1. cd {DemoHome}/CL-uni-dir/scripts
 2. ./start.sh
 3. When "Read from ksql-west cluster, topic stockapp-users-count", let the script run for a while.
-4. Open a new window, run command: scripts/5-run-ksql-east.sh.
+4. Open a new window, run command: `scripts/5-run-ksql-east.sh`.
+
 Observation: 
 The count for each user are insync on both windows ( reading from the east and west cluster).
+
 5. Ctrl C on both windows. The start.sh script will continue the next step.
 6. The script will stop the west cluster and fail over to the east cluster. Then restart the connector.
-7. The script then "Read the stockapp-users-count from East Cluster"
+7. The script continues, then "Read the stockapp-users-count from East Cluster"
+
 Observation:
 The count for each user are aggregated from the left over on the window of the east side in step 4 above. 
 
@@ -54,12 +57,15 @@ If the source region is outage,
 1. cd {DemoHome}/CL-bi-dir/scripts
 2. ./start.sh
 3. At "Read from ksql-west cluster, topic stockapp-users-count", let the script run for a while.
-4. Open a new window, run command: scripts/5-run-ksql-east.sh.
+4. Open a new window, run command: `scripts/5-run-ksql-east.sh`.
+
 Observation:
 The count for each user are insync on both windows ( reading from the east and west cluster).
+
 5. Ctrl C on both windows. The start.sh script will continue the next step.
 6. The script will stop the west cluster and fail over to the east cluster. Change the connector config to point the kafka topic from the west to the east, then restart the connector.
 7. The script then "Read the stockapp-users-count from East Cluster"
+
 Observation:
 The count for each user are aggregated from the left over on the window of the east side in step 4 above. 
 

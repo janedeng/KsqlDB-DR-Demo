@@ -1,7 +1,18 @@
 #!/bin/bash
 
-echo -e "\n===> Deploy Source connector"
 HEADER="Content-Type: application/json"
+
+echo -e "\n===>Register Schema before starting the source connector...\n"
+
+SCHEMA=$( cat << EOF
+{"schema": "{\"type\":\"record\",\"name\":\"users\",\"namespace\":\"ksql\",\"fields\":[{\"name\":\"registertime\",\"type\":\"long\"},{\"name\":\"userid\",\"type\":\"string\"},{\"name\":\"regionid\",\"type\":\"string\"},{\"name\":\"gender\",\"type\":\"string\"},{\"name\":\"interests\",\"type\":{\"type\":\"array\",\"items\":\"string\"}},{\"name\":\"contactinfo\",\"type\":{\"type\":\"map\",\"values\":\"string\"}}],\"connect.name\":\"ksql.users\"}","schemaType": "AVRO"}
+EOF
+)
+
+docker-compose exec schema-registry curl -X POST --data "${SCHEMA}" -H "${HEADER}" http://localhost:8081/subjects/stockapp-users-value/versions
+
+echo -e "\n===> Deploy Source connector"
+
 DATA=$( cat << EOF
 {
   "name": "stockapp-trades-source",

@@ -1,4 +1,6 @@
-CREATE STREAM stockapp_users_stream WITH (
+CREATE STREAM stockapp_users_stream (userid string, registertime BIGINT,
+    regionid STRING,
+    gender STRING) WITH (
     KAFKA_TOPIC = 'stockapp-users',
     VALUE_FORMAT = 'AVRO'
 );

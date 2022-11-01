@@ -10,11 +10,11 @@ echo $DIR/docker-compose-east-connect.yaml
 echo -e "\n===>Check connector status"
 docker-compose -f $DIR/docker-compose-east-connect.yaml exec kafka-connect-east curl -X GET http://kafka-connect-east:8084/connectors?expand=status | jq
 
-echo -e "\n===> Restart connector tasks"
-docker-compose -f $DIR/docker-compose-east-connect.yaml exec kafka-connect-east curl -X POST http://kafka-connect-east:8084/connectors/stockapp-trades-source/restart/?includeTasks=true
+#echo -e "\n===> Restart connector tasks"
+#docker-compose -f $DIR/docker-compose-east-connect.yaml exec kafka-connect-east curl -X POST http://kafka-connect-east:8084/connectors/stockapp-trades-source/restart/?includeTasks=true
 
-sleep 10
+#sleep 10
 
-echo -e "\n===>Check connector status again"
-docker-compose -f $DIR/docker-compose-east-connect.yaml exec kafka-connect-east curl -X GET http://kafka-connect-east:8084/connectors/stockapp-trades-source/status | jq
+#echo -e "\n===>Check connector status again"
+#docker-compose -f $DIR/docker-compose-east-connect.yaml exec kafka-connect-east curl -X GET http://kafka-connect-east:8084/connectors/stockapp-trades-source/status | jq
 

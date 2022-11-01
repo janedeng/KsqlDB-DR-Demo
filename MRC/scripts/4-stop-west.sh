@@ -12,7 +12,10 @@ sleep 20
 
 docker-compose ps
 
-docker-compose exec kafka-connect-east curl -X POST http://kafka-connect-east:8084/connectors/stockapp-trades-source/restart/?includeTasks=true
+#echo -e "\n ===> Restart the connector"
+#echo -e "\n ===> the connector and tasks should be able to fail over to the running worker node automatically.
+#echo -e "\n ===> this step is optional, which forces the connector to restart and failover to reduce the wait time in demo"
+#docker-compose exec kafka-connect-east curl -X POST http://kafka-connect-east:8084/connectors/stockapp-trades-source/restart/?includeTasks=true
 
 sleep 10
 

@@ -9,9 +9,8 @@ docker-compose exec broker-west-1 kafka-topics  --create --bootstrap-server brok
 echo -e "\n===>List stock topics ..."
 docker-compose  exec broker-west-1 kafka-topics --list --bootstrap-server broker-west-1:19091 | grep stockapp-users
 
-echo -e "\n===>Set Replica placement for internal connect topics"
 
-#for t in docker-kafka-connect-configs docker-kafka-connect-offsets docker-kafka-connect-status __consumer_offsets
+echo -e "\n===>Set Replica placement for  __consumer_offsets topic ..."
 for t in __consumer_offsets
   do 
     docker-compose exec broker-east-5 kafka-configs --bootstrap-server localhost:19095 --entity-name  $t --entity-type topics --alter --replica-placement /etc/kafka/demo/my-placement-mrc-sync-op.json
@@ -20,9 +19,10 @@ for t in __consumer_offsets
 
 docker-compose exec broker-east-5 confluent-rebalancer execute --bootstrap-server localhost:19095 --replica-placement-only --throttle 100000 --verbose --force 
 
-for t in docker-kafka-connect-configs docker-kafka-connect-offsets docker-kafka-connect-status __consumer_offsets
-  do 
-    docker-compose exec broker-east-5 kafka-topics --describe --bootstrap-server localhost:19095 --topic $t
-  done
+# Decsribe topics
+#for t in docker-kafka-connect-configs docker-kafka-connect-offsets docker-kafka-connect-status __consumer_offsets
+#  do 
+#    docker-compose exec broker-east-5 kafka-topics --describe --bootstrap-server localhost:19095 --topic $t
+#  done
 
 

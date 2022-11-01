@@ -13,7 +13,7 @@ docker-compose exec schema-registry curl -X POST --data "${SCHEMA}" -H "${HEADER
 
 docker-compose exec schema-registry curl -X POST --data "${SCHEMA}" -H "${HEADER}" http://localhost:8081/subjects/stockapp-users-east-value/versions
  
-echo -e "\n===>Start datagen connector on the west cluster \n"
+echo -e "\n===>Start datagen connector on the west cluster, producing to the west topic stockapp-users-west \n"
 DATA=$( cat << EOF
 {
   "name": "stockapp-user",

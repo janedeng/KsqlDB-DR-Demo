@@ -8,7 +8,7 @@ echo -e "\n===> Setting demo directory..."
 export DIR=${PWD%/*}
 echo -e "Demo Home = $DIR\n"
 
-docker-nuke.sh
+$DIR/../utils/docker-nuke.sh
 sleep 5
 
 echo -e "\n===>Start cluster"

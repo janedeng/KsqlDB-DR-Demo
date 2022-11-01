@@ -1,14 +1,14 @@
 #! /bin/bash
 
 echo -e "##################################################"
-echo -e "# Ksql DR with unidirectional Cluster Linking    #"
+echo -e "# Ksql DR with bi-directional Cluster Linking    #"
 echo -e "##################################################"
 
 echo -e "\n===> Setting demo directory..."
 export DIR=${PWD%/*}
 echo -e "Demo Home = $DIR\n"
 
-docker-nuke.sh
+$DIR/../utils/docker-nuke.sh
 
 echo -e "\n===>Start cluster"
 docker-compose up -d

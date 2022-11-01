@@ -96,7 +96,7 @@ The count for each user are aggregated from the left over on the window of the e
 We follow the recommendation in https://docs.confluent.io/cloud/current/multi-cloud/cluster-linking/dr-failover.html#recovery-recommendations-for-ksqldb-and-kstreams. This DR strategy is straight forward.
 
 #### Bi-directional Cluster Linking
-In this demo, since the producer is a source cluster, we need to maintain the same internal connect topics (connect configs, offsets and status) between the primary and the DR side. We can not fully utilize the advantage of the bi-directional Cluster Linking as we still need to fail over those internal connect topics. 
+In this demo, since the producer is a source connector, we need to maintain the same internal connect topics (connect configs, offsets and status) between the primary and the DR side. We can not fully utilize the advantage of the bi-directional Cluster Linking as we still need to fail over those internal connect topics. 
 
  Bi-directional Cluster Linking could be flexible when the producer is not a connector, but a Kafka client API. In that case, there is no need to break the cluster link during DR. 
 

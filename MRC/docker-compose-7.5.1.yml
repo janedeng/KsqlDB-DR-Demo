@@ -1,0 +1,534 @@
+# docker-compose supports environment variable substitution with the ${VARIABLE-NAME} syntax.
+# Environment variables can be sourced in a variety of ways.  One of those ways is through
+# a well known '.env' file located in the same folder as the docker-compose.yml file.  See the Docker
+# documentation for details: https://docs.docker.com/compose/environment-variables/#the-env-file
+# 
+# This feature is being used to parameterize some values within this file.  In this directory is also
+# a .env file, which is actually a symbolic link to <examples-root>/utils/config.env.  That file
+# contains values which get substituted here when docker-compose parses this file.
+#
+# If you'd like to view the docker-compose.yml file rendered with its environment variable substituions
+# you can execute the `docker-compose config` command.  Take note that some demos provide additional 
+# environment variable values by exporting them in a script prior to running `docker-compose up`.
+---
+version: '3.5'
+
+services:
+  zookeeper-west:
+    image: confluentinc/cp-zookeeper:7.5.1
+    hostname: zookeeper-west
+    container_name: zookeeper-west
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_SERVER_ID: 1
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_SERVERS: zookeeper-west:2888:3888;zookeeper-central:2888:3888;zookeeper-east:2888:3888
+    cap_add:
+      - NET_ADMIN
+
+  zookeeper-central:
+    image: confluentinc/cp-zookeeper:7.5.1
+    hostname: zookeeper-central
+    container_name: zookeeper-central
+    ports:
+      - "2182:2182"
+    environment:
+      ZOOKEEPER_SERVER_ID: 2
+      ZOOKEEPER_CLIENT_PORT: 2182
+      ZOOKEEPER_SERVERS: zookeeper-west:2888:3888;zookeeper-central:2888:3888;zookeeper-east:2888:3888
+    depends_on:
+      - zookeeper-west
+    cap_add:
+      - NET_ADMIN
+
+  zookeeper-east:
+    image: confluentinc/cp-zookeeper:7.5.1
+    hostname: zookeeper-east
+    container_name: zookeeper-east
+    ports:
+      - "2183:2183"
+    environment:
+      ZOOKEEPER_SERVER_ID: 3
+      ZOOKEEPER_CLIENT_PORT: 2183
+      ZOOKEEPER_SERVERS: zookeeper-west:2888:3888;zookeeper-central:2888:3888;zookeeper-east:2888:3888
+    depends_on:
+      - zookeeper-west
+      - zookeeper-central
+    cap_add:
+      - NET_ADMIN
+
+  broker-west-1:
+    image: confluentinc/cp-server:7.5.1
+    hostname: broker-west-1
+    container_name: broker-west-1
+    ports:
+      - "9091:9091"
+      - "8091:8091"
+    volumes:
+      - ./config:/etc/kafka/demo
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_BROKER_RACK: 'west-1'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTENER_DOCKER_INTERNAL:PLAINTEXT,LISTENER_DOCKER_EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: LISTENER_DOCKER_INTERNAL
+      KAFKA_ADVERTISED_LISTENERS: LISTENER_DOCKER_INTERNAL://broker-west-1:19091,LISTENER_DOCKER_EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9091
+      KAFKA_REPLICA_SELECTOR_CLASS: org.apache.kafka.common.replica.RackAwareReplicaSelector
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper-west:2181,zookeeper-central:2182,zookeeper-east:2183'
+      KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
+      KAFKA_CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: broker-west-1:19091,broker-west-2:19092,broker-east-5:19095,broker-east-6:19096
+      KAFKA_CONFLUENT_MONITORING_INTERCEPTER_BOOTSTRAP_SERVERS: broker-west-1:19091,broker-west-2:19092,broker-east-5:19095,broker-east-6:19096
+      KAFKA_JMX_PORT: 8091
+      KAFKA_CONFLUENT_LOG_PLACEMENT_CONSTRAINTS: '{"observerPromotionPolicy":"under-min-isr","version":2,"replicas":[{"count":2,"constraints":{"rack":"west-1"}},{"count":2,"constraints":{"rack":"east-1"}}],"observers":[{"count":1,"constraints":{"rack":"west-1"}},{"count":1,"constraints":{"rack":"east-1"}}]}'
+      KAFKA_CONFLUENT_OFFSETS_TOPIC_PLACEMENT_CONSTRAINTS: '{"observerPromotionPolicy":"under-min-isr","version":2,"replicas":[{"count":2,"constraints":{"rack":"west-1"}},{"count":2,"constraints":{"rack":"east-1"}}],"observers":[{"count":1,"constraints":{"rack":"west-1"}},{"count":1,"constraints":{"rack":"east-1"}}]}'
+      KAFKA_CONFLUENT_TRANSACTION_STATE_LOG_PLACEMENT_CONSTRAINTS: '{"observerPromotionPolicy":"under-min-isr","version":2,"replicas":[{"count":2,"constraints":{"rack":"west-1"}},{"count":2,"constraints":{"rack":"east-1"}}],"observers":[{"count":1,"constraints":{"rack":"west-1"}},{"count":1,"constraints":{"rack":"east-1"}}]}'
+    depends_on:
+      - zookeeper-west
+      - zookeeper-central
+      - zookeeper-east
+    cap_add:
+      - NET_ADMIN
+
+  broker-west-2:
+    image: confluentinc/cp-server:7.5.1
+    hostname: broker-west-2
+    container_name: broker-west-2
+    ports:
+      - "9092:9092"
+      - "8092:8092"
+    volumes:
+      - ./config:/etc/kafka/demo
+    environment:
+      KAFKA_BROKER_ID: 2
+      KAFKA_BROKER_RACK: 'west-1'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTENER_DOCKER_INTERNAL:PLAINTEXT,LISTENER_DOCKER_EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: LISTENER_DOCKER_INTERNAL
+      KAFKA_ADVERTISED_LISTENERS: LISTENER_DOCKER_INTERNAL://broker-west-2:19092,LISTENER_DOCKER_EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9092
+      KAFKA_REPLICA_SELECTOR_CLASS: org.apache.kafka.common.replica.RackAwareReplicaSelector
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper-west:2181,zookeeper-central:2182,zookeeper-east:2183'
+      #KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: -1
+      KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
+      KAFKA_CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: broker-west-1:19091,broker-west-2:19092,broker-east-5:19095,broker-east-6:19096
+      KAFKA_CONFLUENT_MONITORING_INTERCEPTER_BOOTSTRAP_SERVERS: broker-west-1:19091,broker-west-2:19092,broker-east-5:19095,broker-east-6:19096
+      KAFKA_JMX_PORT: 8092
+      KAFKA_CONFLUENT_LOG_PLACEMENT_CONSTRAINTS: '{"observerPromotionPolicy":"under-min-isr","version":2,"replicas":[{"count":2,"constraints":{"rack":"west-1"}},{"count":2,"constraints":{"rack":"east-1"}}],"observers":[{"count":1,"constraints":{"rack":"west-1"}},{"count":1,"constraints":{"rack":"east-1"}}]}'
+      KAFKA_CONFLUENT_OFFSETS_TOPIC_PLACEMENT_CONSTRAINTS: '{"observerPromotionPolicy":"under-min-isr","version":2,"replicas":[{"count":2,"constraints":{"rack":"west-1"}},{"count":2,"constraints":{"rack":"east-1"}}],"observers":[{"count":1,"constraints":{"rack":"west-1"}},{"count":1,"constraints":{"rack":"east-1"}}]}'
+      KAFKA_CONFLUENT_TRANSACTION_STATE_LOG_PLACEMENT_CONSTRAINTS: '{"observerPromotionPolicy":"under-min-isr","version":2,"replicas":[{"count":2,"constraints":{"rack":"west-1"}},{"count":2,"constraints":{"rack":"east-1"}}],"observers":[{"count":1,"constraints":{"rack":"west-1"}},{"count":1,"constraints":{"rack":"east-1"}}]}'
+
+      CONFLUENT_METRICS_ENABLE: 'true'
+    depends_on:
+      - zookeeper-west
+      - zookeeper-central
+      - zookeeper-east
+      - broker-west-1
+    cap_add:
+      - NET_ADMIN
+
+  broker-west-4:
+    image: confluentinc/cp-server:7.5.1
+    hostname: broker-west-4
+    container_name: broker-west-4
+    ports:
+      - "9094:9094"
+      - "8094:8094"
+    volumes:
+      - ./config:/etc/kafka/demo
+    environment:
+      KAFKA_BROKER_ID: 4
+      KAFKA_BROKER_RACK: 'west-1'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTENER_DOCKER_INTERNAL:PLAINTEXT,LISTENER_DOCKER_EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: LISTENER_DOCKER_INTERNAL
+      KAFKA_ADVERTISED_LISTENERS: LISTENER_DOCKER_INTERNAL://broker-west-4:19094,LISTENER_DOCKER_EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9094
+      KAFKA_REPLICA_SELECTOR_CLASS: org.apache.kafka.common.replica.RackAwareReplicaSelector
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper-west:2181,zookeeper-central:2182,zookeeper-east:2183'
+      KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
+      KAFKA_CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: broker-west-1:19091,broker-west-2:19092,broker-east-5:19095,broker-east-6:19096
+      KAFKA_CONFLUENT_MONITORING_INTERCEPTER_BOOTSTRAP_SERVERS: broker-west-1:19091,broker-west-2:19092,broker-east-5:19095,broker-east-6:19096
+      KAFKA_JMX_PORT: 8094
+      KAFKA_CONFLUENT_LOG_PLACEMENT_CONSTRAINTS: '{"observerPromotionPolicy":"under-min-isr","version":2,"replicas":[{"count":2,"constraints":{"rack":"west-1"}},{"count":2,"constraints":{"rack":"east-1"}}],"observers":[{"count":1,"constraints":{"rack":"west-1"}},{"count":1,"constraints":{"rack":"east-1"}}]}'
+      KAFKA_CONFLUENT_OFFSETS_TOPIC_PLACEMENT_CONSTRAINTS: '{"observerPromotionPolicy":"under-min-isr","version":2,"replicas":[{"count":2,"constraints":{"rack":"west-1"}},{"count":2,"constraints":{"rack":"east-1"}}],"observers":[{"count":1,"constraints":{"rack":"west-1"}},{"count":1,"constraints":{"rack":"east-1"}}]}'
+      KAFKA_CONFLUENT_TRANSACTION_STATE_LOG_PLACEMENT_CONSTRAINTS: '{"observerPromotionPolicy":"under-min-isr","version":2,"replicas":[{"count":2,"constraints":{"rack":"west-1"}},{"count":2,"constraints":{"rack":"east-1"}}],"observers":[{"count":1,"constraints":{"rack":"west-1"}},{"count":1,"constraints":{"rack":"east-1"}}]}'
+      CONFLUENT_METRICS_ENABLE: 'true'
+    depends_on:
+      - zookeeper-west
+      - zookeeper-central
+      - zookeeper-east
+      - broker-west-1
+      - broker-west-2
+    cap_add:
+      - NET_ADMIN
+
+  broker-east-5:
+    image: confluentinc/cp-server:7.5.1
+    hostname: broker-east-5
+    container_name: broker-east-5
+    ports:
+      - "9095:9095"
+      - "8095:8095"
+    volumes:
+      - ./config:/etc/kafka/demo
+    environment:
+      KAFKA_BROKER_ID: 5
+      KAFKA_BROKER_RACK: 'east-1'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTENER_DOCKER_INTERNAL:PLAINTEXT,LISTENER_DOCKER_EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: LISTENER_DOCKER_INTERNAL
+      KAFKA_ADVERTISED_LISTENERS: LISTENER_DOCKER_INTERNAL://broker-east-5:19095,LISTENER_DOCKER_EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9095
+      KAFKA_REPLICA_SELECTOR_CLASS: org.apache.kafka.common.replica.RackAwareReplicaSelector
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper-west:2181,zookeeper-central:2182,zookeeper-east:2183'
+      KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
+      KAFKA_CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: broker-west-1:19091,broker-west-2:19092,broker-east-5:19095,broker-east-6:19096
+      KAFKA_CONFLUENT_MONITORING_INTERCEPTER_BOOTSTRAP_SERVERS: broker-west-1:19091,broker-west-2:19092,broker-east-5:19095,broker-east-6:19096
+      KAFKA_JMX_PORT: 8095
+      KAFKA_CONFLUENT_LOG_PLACEMENT_CONSTRAINTS: '{"observerPromotionPolicy":"under-min-isr","version":2,"replicas":[{"count":2,"constraints":{"rack":"west-1"}},{"count":2,"constraints":{"rack":"east-1"}}],"observers":[{"count":1,"constraints":{"rack":"west-1"}},{"count":1,"constraints":{"rack":"east-1"}}]}'
+      KAFKA_CONFLUENT_OFFSETS_TOPIC_PLACEMENT_CONSTRAINTS: '{"observerPromotionPolicy":"under-min-isr","version":2,"replicas":[{"count":2,"constraints":{"rack":"west-1"}},{"count":2,"constraints":{"rack":"east-1"}}],"observers":[{"count":1,"constraints":{"rack":"west-1"}},{"count":1,"constraints":{"rack":"east-1"}}]}'
+      KAFKA_CONFLUENT_TRANSACTION_STATE_LOG_PLACEMENT_CONSTRAINTS: '{"observerPromotionPolicy":"under-min-isr","version":2,"replicas":[{"count":2,"constraints":{"rack":"west-1"}},{"count":2,"constraints":{"rack":"east-1"}}],"observers":[{"count":1,"constraints":{"rack":"west-1"}},{"count":1,"constraints":{"rack":"east-1"}}]}'
+    depends_on:
+      - zookeeper-west
+      - zookeeper-central
+      - zookeeper-east
+      - broker-west-1
+      - broker-west-2
+      - broker-west-4
+    cap_add:
+      - NET_ADMIN
+
+  broker-east-6:
+    image: confluentinc/cp-server:7.5.1
+    hostname: broker-east-6
+    container_name: broker-east-6
+    ports:
+      - "9096:9096"
+      - "8096:8096"
+    volumes:
+      - ./config:/etc/kafka/demo
+    environment:
+      KAFKA_BROKER_ID: 6
+      KAFKA_BROKER_RACK: 'east-1'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTENER_DOCKER_INTERNAL:PLAINTEXT,LISTENER_DOCKER_EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: LISTENER_DOCKER_INTERNAL
+      KAFKA_ADVERTISED_LISTENERS: LISTENER_DOCKER_INTERNAL://broker-east-6:19096,LISTENER_DOCKER_EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9096
+      KAFKA_REPLICA_SELECTOR_CLASS: org.apache.kafka.common.replica.RackAwareReplicaSelector
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper-west:2181,zookeeper-central:2182,zookeeper-east:2183'
+      KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
+      KAFKA_CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: broker-west-1:19091,broker-west-2:19092,broker-east-5:19095,broker-east-6:19096
+      KAFKA_CONFLUENT_MONITORING_INTERCEPTER_BOOTSTRAP_SERVERS: broker-west-1:19091,broker-west-2:19092,broker-east-5:19095,broker-east-6:19096
+      KAFKA_JMX_PORT: 8096
+      KAFKA_CONFLUENT_LOG_PLACEMENT_CONSTRAINTS: '{"observerPromotionPolicy":"under-min-isr","version":2,"replicas":[{"count":2,"constraints":{"rack":"west-1"}},{"count":2,"constraints":{"rack":"east-1"}}],"observers":[{"count":1,"constraints":{"rack":"west-1"}},{"count":1,"constraints":{"rack":"east-1"}}]}'
+      KAFKA_CONFLUENT_OFFSETS_TOPIC_PLACEMENT_CONSTRAINTS: '{"observerPromotionPolicy":"under-min-isr","version":2,"replicas":[{"count":2,"constraints":{"rack":"west-1"}},{"count":2,"constraints":{"rack":"east-1"}}],"observers":[{"count":1,"constraints":{"rack":"west-1"}},{"count":1,"constraints":{"rack":"east-1"}}]}'
+      KAFKA_CONFLUENT_TRANSACTION_STATE_LOG_PLACEMENT_CONSTRAINTS: '{"observerPromotionPolicy":"under-min-isr","version":2,"replicas":[{"count":2,"constraints":{"rack":"west-1"}},{"count":2,"constraints":{"rack":"east-1"}}],"observers":[{"count":1,"constraints":{"rack":"west-1"}},{"count":1,"constraints":{"rack":"east-1"}}]}'
+    depends_on:
+      - zookeeper-west
+      - zookeeper-central
+      - zookeeper-east
+      - broker-west-1
+      - broker-west-2
+      - broker-west-4
+      - broker-east-5
+    cap_add:
+      - NET_ADMIN
+
+
+  broker-east-8:
+    image: confluentinc/cp-server:7.5.1
+    hostname: broker-east-8
+    container_name: broker-east-8
+    ports:
+      - "9099:9099"
+      - "8099:8099"
+    volumes:
+      - ./config:/etc/kafka/demo
+    environment:
+      KAFKA_BROKER_ID: 8
+      KAFKA_BROKER_RACK: 'east-1'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTENER_DOCKER_INTERNAL:PLAINTEXT,LISTENER_DOCKER_EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: LISTENER_DOCKER_INTERNAL
+      KAFKA_ADVERTISED_LISTENERS: LISTENER_DOCKER_INTERNAL://broker-east-8:19099,LISTENER_DOCKER_EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9099
+      KAFKA_REPLICA_SELECTOR_CLASS: org.apache.kafka.common.replica.RackAwareReplicaSelector
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper-west:2181,zookeeper-central:2182,zookeeper-east:2183'
+      KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
+      KAFKA_CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: broker-west-1:19091,broker-west-2:19092,broker-east-5:19095,broker-east-6:19096
+      KAFKA_CONFLUENT_MONITORING_INTERCEPTER_BOOTSTRAP_SERVERS: broker-west-1:19091,broker-west-2:19092,broker-east-5:19095,broker-east-6:19096
+      KAFKA_JMX_PORT: 8099
+      KAFKA_CONFLUENT_LOG_PLACEMENT_CONSTRAINTS: '{"observerPromotionPolicy":"under-min-isr","version":2,"replicas":[{"count":2,"constraints":{"rack":"west-1"}},{"count":2,"constraints":{"rack":"east-1"}}],"observers":[{"count":1,"constraints":{"rack":"west-1"}},{"count":1,"constraints":{"rack":"east-1"}}]}'
+      KAFKA_CONFLUENT_OFFSETS_TOPIC_PLACEMENT_CONSTRAINTS: '{"observerPromotionPolicy":"under-min-isr","version":2,"replicas":[{"count":2,"constraints":{"rack":"west-1"}},{"count":2,"constraints":{"rack":"east-1"}}],"observers":[{"count":1,"constraints":{"rack":"west-1"}},{"count":1,"constraints":{"rack":"east-1"}}]}'
+      KAFKA_CONFLUENT_TRANSACTION_STATE_LOG_PLACEMENT_CONSTRAINTS: '{"observerPromotionPolicy":"under-min-isr","version":2,"replicas":[{"count":2,"constraints":{"rack":"west-1"}},{"count":2,"constraints":{"rack":"east-1"}}],"observers":[{"count":1,"constraints":{"rack":"west-1"}},{"count":1,"constraints":{"rack":"east-1"}}]}'
+    depends_on:
+      - zookeeper-west
+      - zookeeper-central
+      - zookeeper-east
+      - broker-west-1
+      - broker-west-2
+      - broker-west-4
+      - broker-east-5
+      - broker-east-6
+    cap_add:
+      - NET_ADMIN
+
+
+  control-center:
+    image: confluentinc/cp-enterprise-control-center:7.5.1
+    hostname: control-center
+    container_name: control-center
+    ports:
+      - "9021:9021"
+    depends_on:
+      - broker-west-1
+      - broker-west-2
+      - broker-west-4
+      - broker-east-5
+      - broker-east-6
+      - broker-east-8
+      - schema-registry
+      - kafka-connect-west
+      - kafka-connect-east
+    environment:
+      CONTROL_CENTER_BOOTSTRAP_SERVERS: broker-west-1:19091,broker-west-2:19092,broker-east-5:19095,broker-east-6:19096
+      CONTROL_CENTER_REPLICATION_FACTOR: -1 
+      CONTROL_CENTER_INTERNAL_TOPICS_PARTITIONS: 1 
+      CONTROL_CENTER_MONITORING_INTERCEPTOR_TOPIC_PARTITIONS: 1
+      CONTROL_CENTER_KAFKA_MRC_BOOTSTRAP_SERVERS: broker-west-1:19091,broker-west-2:19092,broker-east-5:19095,broker-east-6:19096
+      CONTROL_CENTER_KAFKA_METRICS_BOOTSTRAP_SERVERS: broker-west-1:19091,broker-west-2:19092,broker-east-5:19095,broker-east-6:19096
+      CONFLUENT_METRICS_TOPIC_REPLICATION: -1 
+      PORT: 9021
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.5.1
+    hostname: schema-registry
+    container_name: schema-registry
+    depends_on:
+      - broker-west-1
+      - broker-west-2
+      - broker-west-4
+      - broker-east-5
+      - broker-east-6
+      - broker-east-8
+    ports:
+      - "8081:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'broker-west-1:19091,broker-west-2:19092,broker-east-5:19095,broker-east-6:19096'
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+
+
+  kafka-connect-west:
+    image: confluentinc/cp-kafka-connect:7.5.1
+    container_name: kafka-connect-west
+    hostname: kafka-connect-west
+    depends_on:
+      - broker-west-1
+      - broker-west-2
+      - broker-west-4
+      - broker-east-5
+      - broker-east-6
+      - broker-east-8
+      - schema-registry
+    ports:
+      - 8083:8083
+    environment:
+      CONNECT_BOOTSTRAP_SERVERS: "broker-west-1:19091,broker-west-2:19092,broker-east-5:19095,broker-east-6:19096"
+      CONNECT_REST_PORT: 8083
+      CONNECT_GROUP_ID: kafka-connect
+      CONNECT_CONFIG_STORAGE_TOPIC: docker-kafka-connect-configs
+      CONNECT_OFFSET_STORAGE_TOPIC: docker-kafka-connect-offsets
+      CONNECT_STATUS_STORAGE_TOPIC: docker-kafka-connect-status
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
+      CONNECT_VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
+      CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: 'http://schema-registry:8081'
+      CONNECT_INTERNAL_KEY_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+      CONNECT_INTERNAL_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+      CONNECT_REST_ADVERTISED_HOST_NAME: "kafka-connect-west"
+      CONNECT_LOG4J_ROOT_LOGLEVEL: "INFO"
+      CONNECT_LOG4J_LOGGERS: "org.apache.kafka.connect.runtime.rest=WARN,org.reflections=ERROR"
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: "-1"
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: "-1"
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: "-1"
+      CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components"
+      # Interceptor config
+      CONNECT_PRODUCER_INTERCEPTOR_CLASSES: "io.confluent.monitoring.clients.interceptor.MonitoringProducerInterceptor"
+      CONNECT_CONSUMER_INTERCEPTOR_CLASSES: "io.confluent.monitoring.clients.interceptor.MonitoringConsumerInterceptor"
+      CLASSPATH: /usr/share/java/monitoring-interceptors/monitoring-interceptors-7.5.1.jar
+
+     # added config for control center connect
+      CONNECT_LISTENERS: http://0.0.0.0:8083
+    command:
+      - bash
+      - -c
+      - |
+        echo "Installing Connector"
+        confluent-hub install --no-prompt confluentinc/kafka-connect-datagen:latest
+        #
+        echo "Launching Kafka Connect worker"
+        /etc/confluent/docker/run &
+        #
+        sleep infinity
+
+  kafka-connect-east:
+    image: confluentinc/cp-kafka-connect:7.5.1
+    container_name: kafka-connect-east
+    hostname: kafka-connect-east
+    ports:
+      - 8084:8084
+    depends_on:
+      - broker-west-1
+      - broker-west-2
+      - broker-west-4
+      - broker-east-5
+      - broker-east-6
+      - broker-east-8
+      - schema-registry
+      - kafka-connect-west
+
+    environment:
+      CONNECT_BOOTSTRAP_SERVERS: "broker-west-1:19091,broker-west-2:19092,broker-east-5:19095,broker-east-6:19096"
+      CONNECT_REST_PORT: 8084
+      CONNECT_GROUP_ID: kafka-connect
+      CONNECT_CONFIG_STORAGE_TOPIC: docker-kafka-connect-configs
+      CONNECT_OFFSET_STORAGE_TOPIC: docker-kafka-connect-offsets
+      CONNECT_STATUS_STORAGE_TOPIC: docker-kafka-connect-status
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
+      CONNECT_VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
+      CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: 'http://schema-registry:8081'
+      CONNECT_INTERNAL_KEY_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+      CONNECT_INTERNAL_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+      CONNECT_REST_ADVERTISED_HOST_NAME: "kafka-connect-east"
+      CONNECT_LOG4J_ROOT_LOGLEVEL: "INFO"
+      CONNECT_LOG4J_LOGGERS: "org.apache.kafka.connect.runtime.rest=WARN,org.reflections=ERROR"
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: "-1"
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: "-1"
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: "-1"
+      CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components"
+      # Interceptor config
+      CONNECT_PRODUCER_INTERCEPTOR_CLASSES: "io.confluent.monitoring.clients.interceptor.MonitoringProducerInterceptor"
+      CONNECT_CONSUMER_INTERCEPTOR_CLASSES: "io.confluent.monitoring.clients.interceptor.MonitoringConsumerInterceptor"
+      CLASSPATH: /usr/share/java/monitoring-interceptors/monitoring-interceptors-7.5.1.jar
+
+     # added config for control center connect
+      CONNECT_LISTENERS: http://0.0.0.0:8084
+    command:
+      - bash
+      - -c
+      - |
+        echo "Installing Connector"
+        confluent-hub install --no-prompt confluentinc/kafka-connect-datagen:latest
+        #
+        echo "Launching Kafka Connect worker"
+        /etc/confluent/docker/run &
+        #
+        sleep infinity
+
+  ksql-server-west:
+    image: confluentinc/cp-ksqldb-server:7.5.1
+    container_name: ksql-server-west
+    hostname: ksql-server-west
+    ports:
+      - 8088:8088
+    depends_on:
+      - broker-west-1
+      - broker-west-2
+      - broker-west-4
+      - broker-east-5
+      - broker-east-6
+      - broker-east-8
+      - schema-registry
+      - kafka-connect-west
+      - kafka-connect-east
+      
+    environment:
+      KSQL_BOOTSTRAP_SERVERS: broker-west-1:19091,broker-west-2:19092,broker-east-5:19095,broker-east-6:19096
+      KSQL_LISTENERS: http://0.0.0.0:8088
+      KSQL_KSQL_SERVICE_ID: ksql-server
+      KSQL_KSQL_STREAMS_REPLICATION_FACTOR: -1
+      KSQL_KSQL_INTERNAL_TOPIC_REPLICAS: -1
+      KSQL_CUB_KAFKA_TIMEOUT: 300
+      KSQL_KSQL_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      # -v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v
+      # Useful settings for development/laptop use - modify as needed for Prod
+      KSQL_KSQL_COMMIT_INTERVAL_MS: 2000
+      KSQL_KSQL_SINK_PARTITIONS: 1
+      KSQL_KSQL_CACHE_MAX_BYTES_BUFFERING: 10000000
+      KSQL_KSQL_STREAMS_AUTO_OFFSET_RESET: earliest
+      # -v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v
+      # Producer Confluent Monitoring Interceptors for Control Center streams monitoring
+      KSQL_PRODUCER_INTERCEPTOR_CLASSES: "io.confluent.monitoring.clients.interceptor.MonitoringProducerInterceptor"
+      KSQL_CONSUMER_INTERCEPTOR_CLASSES: "io.confluent.monitoring.clients.interceptor.MonitoringConsumerInterceptor"
+
+  ksql-server-east:
+    image: confluentinc/cp-ksqldb-server:7.5.1
+    container_name: ksql-server-east
+    hostname: ksql-server-east
+    ports:
+      - 8089:8089
+    depends_on:
+      - broker-west-1
+      - broker-west-2
+      - broker-west-4
+      - broker-east-5
+      - broker-east-6
+      - broker-east-8
+      - schema-registry
+      - kafka-connect-west
+      - kafka-connect-east
+    environment:
+      KSQL_BOOTSTRAP_SERVERS: broker-west-1:19091,broker-west-2:19092,broker-east-5:19095,broker-east-6:19096
+      KSQL_LISTENERS: http://0.0.0.0:8089
+      KSQL_KSQL_SERVICE_ID: ksql-server
+      KSQL_KSQL_STREAMS_REPLICATION_FACTOR: -1
+      KSQL_KSQL_INTERNAL_TOPIC_REPLICAS: -1
+      KSQL_CUB_KAFKA_TIMEOUT: 300
+      KSQL_KSQL_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      # -v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v
+      # Useful settings for development/laptop use - modify as needed for Prod
+      KSQL_KSQL_COMMIT_INTERVAL_MS: 2000
+      KSQL_KSQL_SINK_PARTITIONS: 1
+      KSQL_KSQL_CACHE_MAX_BYTES_BUFFERING: 10000000
+      KSQL_KSQL_STREAMS_AUTO_OFFSET_RESET: earliest
+      # -v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v
+      # Producer Confluent Monitoring Interceptors for Control Center streams monitoring
+      KSQL_PRODUCER_INTERCEPTOR_CLASSES: "io.confluent.monitoring.clients.interceptor.MonitoringProducerInterceptor"
+      KSQL_CONSUMER_INTERCEPTOR_CLASSES: "io.confluent.monitoring.clients.interceptor.MonitoringConsumerInterceptor"
+
+  ksql-cli-west:
+    image: confluentinc/cp-ksqldb-cli:7.5.1
+    container_name: ksql-cli-west
+    hostname: ksql-cli-west
+    depends_on:
+      - broker-west-1
+      - broker-west-2
+      - broker-west-4
+      - broker-east-5
+      - broker-east-6
+      - broker-east-8
+      - schema-registry
+      - kafka-connect-west
+      - kafka-connect-east
+      - ksql-server-west
+      - ksql-server-east
+
+    volumes:
+      - ./config:/etc/kafka/demo
+    entrypoint: /bin/sh
+    tty: true
+
+  ksql-cli-east:
+    image: confluentinc/cp-ksqldb-cli:7.5.1
+    container_name: ksql-cli-east
+    hostname: ksql-cli-east
+    depends_on:
+      - broker-west-1
+      - broker-west-2
+      - broker-west-4
+      - broker-east-5
+      - broker-east-6
+      - broker-east-8
+      - schema-registry
+      - kafka-connect-west
+      - kafka-connect-east
+      - ksql-server-west
+      - ksql-server-east
+
+    volumes:
+      - ./config:/etc/kafka/demo
+    entrypoint: /bin/sh
+    tty: true
+
+
